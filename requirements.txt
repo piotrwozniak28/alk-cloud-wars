@@ -2,3 +2,5 @@ Flask==2.0.2
 gunicorn==20.1.0
 python-dotenv==0.15.0
 google-cloud-bigquery==2.34.0
+google-cloud-bigquery-storage==2.12.0
+protobuf==3.19.4

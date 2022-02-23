@@ -9,7 +9,7 @@ Developed with Python version 3.9.
 
 # How to run
 Both local and Cloud Run setup requires you to:
-1. Create ```.env_cloud-wars-bq-insertall``` file based on ```.env_cloud-wars-bq-insertall.example``` and replace environment variables with the correct values.
+1. Create ```.env_cloud-wars-bq-write-api``` file based on ```.env_cloud-wars-bq-write-api.example``` and replace environment variables with the correct values.
 2. Authorize the gcloud CLI tools to use your user account credentials to access GCP ([gcloud CLI documentation](https://cloud.google.com/sdk/docs/initializing))
 
 ## 1. Running locally
@@ -35,13 +35,12 @@ Both local and Cloud Run setup requires you to:
 
 ---
 ## 2. Running on Cloud Run
-1. Authorize the gcloud CLI tools to use your user account credentials to access GCP ([gcloud CLI documentation](https://cloud.google.com/sdk/docs/initializing))
-2. Build and deploy
+1. Build and deploy
     ```bash
     source 010_build_and_deploy.sh
     ```
 
-3. Navigate your browser to the URL output at the end of the deployment process.
+2. Navigate your browser to the URL output at the end of the deployment process.
 
     **Your Cloud Run app will be accessible to everyone. Remember to delete it after use to avoid costs.**
 
@@ -57,3 +56,14 @@ Both local and Cloud Run setup requires you to:
 2. Navigate towards `http://127.0.0.1:8089`.
 3. Provide application url (either run locally or on Cloud Run) without the trailing slash - i.e. '/' and number of users.
 4. Start the swarm.
+---
+## 4. Updating the protocol buffer definition
+1. Modify the ```proto_files/in/vote.proto``` and compile the output file as below
+
+    ```
+    protoc --proto_path=proto_files/in --python_out=proto_files/out vote.proto
+    ```
+    #### More on protocol buffers:
+
+    ##### https://developers.google.com/protocol-buffers/docs/proto#generating
+    ##### https://www.freecodecamp.org/news/googles-protocol-buffers-in-python/

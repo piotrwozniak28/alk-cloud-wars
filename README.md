@@ -9,8 +9,9 @@ Developed with Python version 3.9.
 
 # How to run
 Both local and Cloud Run setup requires you to:
-1. Create ```.env_cloud-wars-bq-insertall``` file based on ```.env_cloud-wars-bq-insertall.example``` and replace environment variables with the correct values.
-2. Authorize the gcloud CLI tools to use your user account credentials to access GCP ([gcloud CLI documentation](https://cloud.google.com/sdk/docs/initializing))
+1. Create a Postgres on Cloud SQL instance (e.g. with ```000_start_cloud_sql_instance.sh``` script).
+2. Create ```.env_cloud-wars-postgres``` file based on ```.env_cloud-wars-postgres.example``` and replace environment variables with the correct values.
+3. Authorize the gcloud CLI tools to use your user account credentials to access GCP ([gcloud CLI documentation](https://cloud.google.com/sdk/docs/initializing))
 
 ## 1. Running locally
 1. Prepare environment (operating from projet's root direstory)
@@ -26,22 +27,21 @@ Both local and Cloud Run setup requires you to:
     python -m pip install -r requirements.txt
     ```
     If any of above is unclear, get acustomed with the [python setup guide](https://cloud.google.com/python/setup).
-
-2. Run the app
+3. Run the Cloud SQL Auth Proxy to connect to your Cloud SQL instance using TCP socket [Cloud SQL Proxy guide](https://cloud.google.com/sql/docs/mysql/connect-admin-proxy#start-proxy)
+4. Run the app
     ```bash
     python main.py
     ```
-3. Navigate towards `http://127.0.0.1:8081` to verify if your application is running correctly.
+5. Navigate towards `http://127.0.0.1:8081` to verify if your application is running correctly.
 
 ---
 ## 2. Running on Cloud Run
-1. Authorize the gcloud CLI tools to use your user account credentials to access GCP ([gcloud CLI documentation](https://cloud.google.com/sdk/docs/initializing))
-2. Build and deploy
+1. Build and deploy
     ```bash
     source 010_build_and_deploy.sh
     ```
 
-3. Navigate your browser to the URL output at the end of the deployment process.
+2. Navigate your browser to the URL output at the end of the deployment process.
 
     **Your Cloud Run app will be accessible to everyone. Remember to delete it after use to avoid costs.**
 

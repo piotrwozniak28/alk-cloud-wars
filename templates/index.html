@@ -11,7 +11,6 @@
 
 <body style="display: flex; min-height: 100vh; flex-direction: column;">
     <header>
-
         <nav class="grey darken-4">
             <div class="nav-wrapper">
                 <a href="#" class="brand-logo center"><strong>CLOUD WARS</strong><i
@@ -21,7 +20,21 @@
         <div class="section">
             <div class="center">
                 <h4>
-                    Vote for your favorite Cloud
+                    {% if aws_count > azure_count and aws_count > gcp_count %}
+                    AWS is winning!
+                    {% elif azure_count > aws_count and azure_count > gcp_count %}
+                    Azure is winning!
+                    {% elif gcp_count > aws_count and gcp_count > azure_count %}
+                    GCP is winning !
+                    {% elif aws_count == azure_count and azure_count != gcp_count %}
+                    AWS and Azure are evenly matched!
+                    {% elif aws_count == gcp_count and azure_count != gcp_count %}
+                    AWS and GCP are evenly matched!
+                    {% elif azure_count == gcp_count and aws_count != gcp_count %}
+                    Azure and GCP are evenly matched!
+                    {% else %}
+                    All Clouds are evenly matched!
+                    {% endif %}
                 </h4>
             </div>
 
@@ -29,28 +42,46 @@
     <main style="flex: 1 0 auto;">
         <div class="row center">
             <div class="col s4 m4">
-                <div class="card-panel">
+                <div class="card-panel {{'amber lighten-5' if aws_count > azure_count and aws_count > gcp_count}}">
                     <img src="https://img.icons8.com/color/90/000000/amazon-web-services.png" />
-                    <h3></h3>
+                    <h3>{{aws_count}} votes</h3>
                     <button id="voteAws" class="waves-effect waves-light btn blue-grey lighten-1">Vote for AWS</button>
                 </div>
             </div>
             <div class="col s4 m4">
-                <div class="card-panel">
+                <div class="card-panel {{'amber lighten-5' if azure_count > aws_count and azure_count > gcp_count}}">
                     <img src="https://img.icons8.com/color/90/000000/azure-1.png" />
-                    <h3></h3>
+                    <h3>{{azure_count}} votes</h3>
                     <button id="voteAzure" class="waves-effect waves-light btn blue-grey lighten-1">Vote for
                         Azure</button>
                 </div>
             </div>
             <div class="col s4 m4">
-                <div class="card-panel">
+                <div class="card-panel {{'amber lighten-5' if gcp_count > aws_count and gcp_count > azure_count}}">
                     <img src="https://img.icons8.com/color/90/000000/google-cloud.png" />
-                    <h3></h3>
+                    <h3>{{gcp_count}} votes</h3>
                     <button id="voteGcp" class="waves-effect waves-light btn blue-grey lighten-1">Vote for GCP</button>
                 </div>
             </div>
         </div>
+        <h4 class="header center">Recent Votes</h4>
+        <ul class="container collection center">
+            {% for vote in recent_votes %}
+            <li class="collection-item avatar" style="min-height: 66px;">
+                {% if vote.candidate == "AWS" %}
+                <img src="https://img.icons8.com/color/48/000000/amazon-web-services.png" class="circle" />
+                {% elif vote.candidate == "Azure" %}
+                <img src="https://img.icons8.com/color/48/000000/azure-1.png" class="circle" />
+                {% else %}
+                <img src="https://img.icons8.com/color/48/000000/google-cloud.png" class="circle" />
+                {% endif %}
+                <span class="title">
+                    A vote for <b>{{vote.candidate}}</b>
+                </span>
+                <p>cast at {{vote.time_cast}}</p>
+            </li>
+            {% endfor %}
+        </ul>
         </div>
     </main>
 

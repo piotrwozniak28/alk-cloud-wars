@@ -1,31 +1,181 @@
 import os
+import ssl
 import logging
 import datetime
+import sqlalchemy
 from flask import Flask, render_template, request, Response
-from google.cloud import bigquery
 
 APP_ENV_INFO = os.getenv("APP_ENV_INFO")
 DB_ENV_INFO = os.getenv("DB_ENV_INFO")
-PROJECT_ID = os.getenv("PROJECT_ID")
-BQD_STREAMING = os.getenv("BQD_STREAMING")
-TABLE_NAME = os.getenv("TABLE_NAME")
-BQ_TABLE_ID = f'{PROJECT_ID}.{BQD_STREAMING}.{TABLE_NAME}'
 
 LOGGER = logging.getLogger()
-BQ = bigquery.Client()
 app = Flask(__name__)
+
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "sa_key.json"
+
+def init_connection_engine():
+    global sql_conn_type
+    db_config = {
+        # Pool size is the maximum number of permanent connections to keep.
+        "pool_size": 5,
+        # Temporarily exceeds the set pool_size if no connections are available.
+        "max_overflow": 2,
+        # The total number of concurrent connections for your application will be
+        # a total of pool_size and max_overflow.
+
+        # SQLAlchemy automatically uses delays between failed connection attempts,
+        # but provides no arguments for configuration.
+
+        # 'pool_timeout' is the maximum number of seconds to wait when retrieving a
+        # new connection from the pool. After the specified amount of time, an
+        # exception will be thrown.
+        "pool_timeout": 30,  # 30 seconds
+
+        # 'pool_recycle' is the maximum number of seconds a connection can persist.
+        # Connections that live longer than the specified amount of time will be
+        # reestablished
+        "pool_recycle": 1800,  # 30 minutes
+    }
+
+    if os.environ.get("DB_HOST"):
+        if os.environ.get("DB_ROOT_CERT"):
+            sql_conn_type = 'TCP connection with SSL'
+            return init_tcp_sslcerts_connection_engine(db_config)
+        sql_conn_type = 'TCP connection'
+        return init_tcp_connection_engine(db_config)
+    sql_conn_type = 'Unix socket'
+    return init_unix_connection_engine(db_config)
+
+
+def init_tcp_sslcerts_connection_engine(db_config):
+    db_user = os.environ["DB_USER"]
+    db_pass = os.environ["DB_PASS"]
+    db_name = os.environ["DB_NAME"]
+    db_host = os.environ["DB_HOST"]
+    db_root_cert = os.environ["DB_ROOT_CERT"]
+    db_cert = os.environ["DB_CERT"]
+    db_key = os.environ["DB_KEY"]
+
+    # Extract port from db_host if present,
+    # otherwise use DB_PORT environment variable.
+    host_args = db_host.split(":")
+    if len(host_args) == 1:
+        db_hostname = host_args[0]
+        db_port = int(os.environ["DB_PORT"])
+    elif len(host_args) == 2:
+        db_hostname, db_port = host_args[0], int(host_args[1])
+
+    ssl_context = ssl.SSLContext()
+    ssl_context.verify_mode = ssl.CERT_REQUIRED
+    ssl_context.load_verify_locations(db_root_cert)
+    ssl_context.load_cert_chain(db_cert, db_key)
+    ssl_args = {"ssl_context": ssl_context}
+
+    pool = sqlalchemy.create_engine(
+        # Equivalent URL:
+        # postgresql+pg8000://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
+        sqlalchemy.engine.url.URL.create(
+            drivername="postgresql+pg8000",
+            username=db_user,  # e.g. "my-database-user"
+            password=db_pass,  # e.g. "my-database-password"
+            host=db_hostname,  # e.g. "127.0.0.1"
+            port=db_port,  # e.g. 5432
+            database=db_name  # e.g. "my-database-name"
+        ),
+        connect_args=ssl_args,
+        **db_config
+    )
+    pool.dialect.description_encoding = None
+    return pool
+
+
+def init_tcp_connection_engine(db_config):
+    db_user = os.environ["DB_USER"]
+    db_pass = os.environ["DB_PASS"]
+    db_name = os.environ["DB_NAME"]
+    db_host = os.environ["DB_HOST"]
+
+    # Extract port from db_host if present,
+    # otherwise use DB_PORT environment variable.
+    host_args = db_host.split(":")
+    if len(host_args) == 1:
+        db_hostname = db_host
+        db_port = os.environ["DB_PORT"]
+    elif len(host_args) == 2:
+        db_hostname, db_port = host_args[0], int(host_args[1])
+
+    pool = sqlalchemy.create_engine(
+        # Equivalent URL:
+        # postgresql+pg8000://<db_user>:<db_pass>@<db_host>:<db_port>/<db_name>
+        sqlalchemy.engine.url.URL.create(
+            drivername="postgresql+pg8000",
+            username=db_user,
+            password=db_pass,
+            host=db_hostname,
+            port=db_port,
+            database=db_name
+        ),
+        **db_config
+    )
+    pool.dialect.description_encoding = None
+    return pool
+
+
+def init_unix_connection_engine(db_config):
+    db_user = os.environ["DB_USER"]
+    db_pass = os.environ["DB_PASS"]
+    db_name = os.environ["DB_NAME"]
+    db_socket_dir = os.environ.get("DB_SOCKET_DIR", "/cloudsql")
+    instance_connection_name = os.environ["CLOUD_SQL_CONNECTION_NAME"]
+
+    pool = sqlalchemy.create_engine(
+
+        # Equivalent URL:
+        # postgresql+pg8000://<db_user>:<db_pass>@/<db_name>
+        #                         ?unix_sock=<socket_path>/<cloud_sql_instance_name>/.s.PGSQL.5432
+        # Note: Some drivers require the `unix_sock` query parameter to use a different key.
+        # For example, 'psycopg2' uses the path set to `host` in order to connect successfully.
+        sqlalchemy.engine.url.URL.create(
+            drivername="postgresql+pg8000",
+            username=db_user,
+            password=db_pass,
+            database=db_name,
+            query={
+                "unix_sock": "{}/{}/.s.PGSQL.5432".format(
+                    db_socket_dir,  # e.g. "/cloudsql"
+                    instance_connection_name)  # i.e "<PROJECT-NAME>:<INSTANCE-REGION>:<INSTANCE-NAME>"
+            }
+        ),
+        **db_config
+    )
+    pool.dialect.description_encoding = None
+    return pool
+
+
+# This global variable is declared with a value of `None`, instead of calling
+# `init_connection_engine()` immediately, to simplify testing. In general, it
+# is safe to initialize your database connection pool when your script starts
+# -- there is no need to wait for the first request.
+db = None
 
 
 @app.before_first_request
 def create_tables():
-    schema = [
-        bigquery.SchemaField("time_cast", "TIMESTAMP", mode="REQUIRED"),
-        bigquery.SchemaField("candidate", "STRING",
-                             mode="REQUIRED", max_length=5),
-    ]
-
-    table = bigquery.Table(BQ_TABLE_ID, schema=schema)
-    table = BQ.create_table(table, exists_ok=True)  # Make an API request.
+    global db
+    db = init_connection_engine()
+    with db.connect() as conn:
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS votes "
+            "( vote_id SERIAL NOT NULL, time_cast timestamp NOT NULL, "
+            "candidate VARCHAR(7) NOT NULL, PRIMARY KEY (vote_id) );"
+        )
+        conn.execute(
+            "CREATE INDEX IF NOT EXISTS idx_votes "
+            "ON votes (time_cast DESC) INCLUDE (candidate);"
+        )
+        conn.execute(
+            "ANALYZE votes;"
+        )
 
 
 @app.route('/', methods=['GET'])
@@ -35,8 +185,37 @@ def index():
 
 
 def get_index_context():
+
+    votes = []
+
+    with db.connect() as conn:
+        # Execute the query and fetch all results
+        recent_votes = conn.execute(
+            "SELECT candidate, time_cast FROM votes "
+            "ORDER BY time_cast DESC LIMIT 8"
+        ).fetchall()
+        # Convert the results into a list of dicts representing votes
+        for row in recent_votes:
+            votes.append({
+                'candidate': row[0],
+                'time_cast': row[1]
+            })
+
+        stmt = sqlalchemy.text(
+            "SELECT COUNT(vote_id) FROM votes WHERE candidate=:candidate")
+        aws_result = conn.execute(stmt, candidate="AWS").fetchone()
+        aws_count = aws_result[0]
+        azure_result = conn.execute(stmt, candidate="Azure").fetchone()
+        azure_count = azure_result[0]
+        gcp_result = conn.execute(stmt, candidate="GCP").fetchone()
+        gcp_count = gcp_result[0]
+
     return {
-        'front_db_info': DB_ENV_INFO,
+        'azure_count': azure_count,
+        'recent_votes': votes,
+        'aws_count': aws_count,
+        'gcp_count': gcp_count,
+        'front_db_info': f"{DB_ENV_INFO} ({sql_conn_type})",
         'front_app_info': APP_ENV_INFO
     }
 
@@ -53,11 +232,23 @@ def save_vote():
             status=400
         )
 
+    # Preparing a statement before hand can help protect against injections.
+    stmt = sqlalchemy.text(
+        "INSERT INTO votes (time_cast, candidate)"
+        " VALUES (:time_cast, :candidate)"
+    )
     try:
-        table_insert_rows(time_cast=time_cast.isoformat(
-        ), candidate=cloud, table_id=BQ_TABLE_ID)
+        # Using a with statement ensures that the connection is always released
+        # back into the pool at the end of statement (even if an error occurs)
+        with db.connect() as conn:
+            conn.execute(stmt, time_cast=time_cast, candidate=cloud)
     except Exception as e:
-        print(e)
+        LOGGER.exception(e)
+        return Response(
+            status=500,
+            response="Unable to successfully cast vote! Please check the "
+                     "application logs for more details."
+        )
 
     return Response(
         status=200,
@@ -66,25 +257,10 @@ def save_vote():
     )
 
 
-def table_insert_rows(time_cast, candidate, table_id=BQ_TABLE_ID):
-
-    rows_to_insert = [
-        {"time_cast": time_cast, "candidate": candidate}
-    ]
-
-    # Using row_ids enables best effort de-duplication
-    # https://cloud.google.com/bigquery/streaming-data-into-bigquery#dataconsistency
-    # errors = BQ.insert_rows_json(table_id, rows_to_insert, row_ids='1') # Make an API request.
-    errors = BQ.insert_rows_json(table_id, rows_to_insert) # Make an API request.
-    if errors != []:
-        LOGGER.exception(errors)
-        raise
-    LOGGER.info("Vote successfully cast for '{}' at time {}!".format(
-        candidate, time_cast))
-
-
 if __name__ == '__main__':
     from dotenv import load_dotenv
-    load_dotenv(dotenv_path=".env_cloud-wars-bq-insertall", verbose=True, override=True)
+    load_dotenv(dotenv_path=".env_cloud-wars-postgres", verbose=True, override=True)
+    os.environ["DB_HOST"] = "127.0.0.1:5432"
+    os.environ["PORT"] = "8081"
     os.environ["APP_ENV_INFO"] = "Run directly with main.py"
     app.run(host='127.0.0.1', port=8081, debug=True)

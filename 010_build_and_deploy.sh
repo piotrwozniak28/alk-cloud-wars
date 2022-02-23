@@ -13,7 +13,7 @@ gcloud run deploy ${APP_NAME} \
   --image gcr.io/${PROJECT_ID}/${APP_NAME} \
   --platform managed \
   --region ${REGION} \
-  --set-env-vars PROJECT_ID=${PROJECT_ID},BQD_STREAMING=${BQD_STREAMING},TABLE_NAME=${TABLE_NAME},APP_ENV_INFO="${APP_ENV_INFO}",DB_ENV_INFO="${DB_ENV_INFO}" \
+  --add-cloudsql-instances "${PROJECT_ID}:${REGION}:${CLOUD_SQL_INSTANCE_NAME}" \
+  --set-env-vars CLOUD_SQL_CONNECTION_NAME="${PROJECT_ID}:${REGION}:${CLOUD_SQL_INSTANCE_NAME}",DB_USER=${DB_USER},DB_PASS=${DB_PASS},DB_NAME=${DB_NAME},APP_ENV_INFO="${APP_ENV_INFO}",DB_ENV_INFO="${DB_ENV_INFO}" \
   --project ${PROJECT_ID} \
   --allow-unauthenticated
-  

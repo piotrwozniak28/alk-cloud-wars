@@ -1,4 +1,5 @@
 Flask==2.0.2
+pg8000==1.23.0
+SQLAlchemy==1.4.27
 gunicorn==20.1.0
 python-dotenv==0.15.0
-google-cloud-bigquery==2.34.0

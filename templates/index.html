@@ -1,0 +1,93 @@
+<html lang="en">
+
+<head>
+    <title>CLOUD WARS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+    <link rel="icon" type="image/png"
+        href="https://img.icons8.com/external-lineal-color-zulfa-mahendra/32/000000/external-cloud-nature-and-ecology-4-lineal-color-zulfa-mahendra.png">
+</head>
+
+<body style="display: flex; min-height: 100vh; flex-direction: column;">
+    <header>
+
+        <nav class="grey darken-4">
+            <div class="nav-wrapper">
+                <a href="#" class="brand-logo center"><strong>CLOUD WARS</strong><i
+                        class="material-icons left">flash_on</i><i class="material-icons right">flash_on</i></a>
+            </div>
+        </nav>
+        <div class="section">
+            <div class="center">
+                <h4>
+                    Vote for your favorite Cloud
+                </h4>
+            </div>
+
+    </header>
+    <main style="flex: 1 0 auto;">
+        <div class="row center">
+            <div class="col s4 m4">
+                <div class="card-panel">
+                    <img src="https://img.icons8.com/color/90/000000/amazon-web-services.png" />
+                    <h3></h3>
+                    <button id="voteAws" class="waves-effect waves-light btn blue-grey lighten-1">Vote for AWS</button>
+                </div>
+            </div>
+            <div class="col s4 m4">
+                <div class="card-panel">
+                    <img src="https://img.icons8.com/color/90/000000/azure-1.png" />
+                    <h3></h3>
+                    <button id="voteAzure" class="waves-effect waves-light btn blue-grey lighten-1">Vote for
+                        Azure</button>
+                </div>
+            </div>
+            <div class="col s4 m4">
+                <div class="card-panel">
+                    <img src="https://img.icons8.com/color/90/000000/google-cloud.png" />
+                    <h3></h3>
+                    <button id="voteGcp" class="waves-effect waves-light btn blue-grey lighten-1">Vote for GCP</button>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <footer class="page-footer docs-footer"
+        style="border-top: 1px solid rgba(0,0,0,0.14); background-color: transparent; padding-top:0px; margin-top: 1.52rem">
+        <div class="container">
+            <div class="col s12 m10">
+                <div class="footer-copyright" style="background-color:inherit">
+                    <span class="grey-text text-darken-1 left">{{front_app_info}}</span>
+                    <span class="grey-text text-darken-1 right">{{front_db_info}}</span>
+                </div>
+            </div>
+    </footer>
+
+    <script>
+        function vote(cloud) {
+            var xhr = new XMLHttpRequest();
+            xhr.onreadystatechange = function () {
+                if (this.readyState == 4) {
+                    window.location.reload();
+                }
+            };
+            xhr.open("POST", "/", true);
+            xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhr.send("cloud=" + cloud);
+        }
+
+        document.getElementById("voteAws").addEventListener("click", function () {
+            vote("AWS");
+        });
+        document.getElementById("voteAzure").addEventListener("click", function () {
+            vote("Azure");
+        });
+        document.getElementById("voteGcp").addEventListener("click", function () {
+            vote("GCP");
+        });
+    </script>
+</body>
+
+</html>
